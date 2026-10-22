@@ -1,0 +1,14 @@
+[package]
+name = "mugon-editor"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+mugon-editor-core.workspace = true
+mugon-editor-import.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+mugon-editor-server.workspace = true
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+mugon-editor-mcp = { path = "../mugon-editor-mcp" }
+mugon-editor-scene = { path = "../mugon-editor-scene" }

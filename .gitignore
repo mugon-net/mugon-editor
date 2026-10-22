@@ -1,0 +1,8 @@
+.venv
+import
+temp
+tmp
+scratch
+node_modules
+/target
+dist

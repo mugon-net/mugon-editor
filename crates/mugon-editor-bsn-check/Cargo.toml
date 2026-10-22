@@ -1,0 +1,10 @@
+[package]
+name = "mugon-editor-bsn-check"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+# Compile + spawn test for the BSN source that `mugon-editor-scene` generates.
+[dependencies]
+mugon-sdk-bevy = { path = "../../../mugon-sdk-bevy", default-features = false, features = ["scene"] }
+bevy = { version = "0.19", default-features = false, features = ["bevy_asset", "bevy_camera", "bevy_scene", "bevy_gltf", "bevy_log"] }

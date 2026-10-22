@@ -1,0 +1,14 @@
+[package]
+name = "mugon-editor-import"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+mugon-editor-core.workspace = true
+anyhow.workspace = true
+serde_json.workspace = true
+rayon.workspace = true
+tar.workspace = true
+flate2.workspace = true
+regex.workspace = true
+image = { version = "0.25", default-features = false, features = ["png", "tga", "jpeg", "bmp"] }

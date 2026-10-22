@@ -1,0 +1,32 @@
+# Editor section of a game's mugon.toml (next to id, version, ...). Only [[editor.component]] is required for custom components.
+# Field types: bool, i32, f32, string, vec2, vec3, color, enum, asset.
+# `rust_type` on an enum field names the Rust enum emitted in the exported BSN.
+
+[editor.scenes]
+json-path = "scenes"      # where scenes (*.mugon-scene.json) are saved; default shown
+bsn-path = "src/scenes"   # where exported BSN (*.rs) goes; default shown
+
+[editor.assets]
+path = "assets"           # where "Export on save" copies the used assets; default shown
+
+[[editor.component]]
+name = "Health"
+fields = [{ name = "max", type = "f32", default = 100.0 }]
+
+[[editor.component]]
+name = "Spawner"
+marker_color = [1.0, 0.4, 0.3]
+fields = [
+    { name = "kind", type = "string", default = "enemy" },
+    { name = "count", type = "i32", default = 1 },
+    { name = "offset", type = "vec3", default = [0.0, 0.0, 0.0] },
+]
+
+[[editor.component]]
+name = "Collider"
+fields = [{ name = "shape", type = "enum", rust_type = "ColliderShape", options = ["Box", "Sphere", "Mesh"], default = "Box" }]
+
+[[editor.component]]
+name = "Pickup"
+fields = []
+marker_color = [1.0, 0.8, 0.2]   # markers with this component are drawn in this colour ([r, g, b], 0..1)

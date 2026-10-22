@@ -1,0 +1,10 @@
+[package]
+name = "mugon-editor-thumbs"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+mugon-editor-core.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+bevy = { version = "0.19", default-features = false, features = ["3d"] }

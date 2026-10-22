@@ -1,0 +1,33 @@
+[workspace]
+resolver = "2"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+
+[workspace.dependencies]
+anyhow = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+clap = { version = "4", features = ["derive", "env"] }
+rayon = "1"
+tar = "0.4"
+flate2 = "1"
+regex = "1"
+mugon-editor-core = { path = "crates/mugon-editor-core" }
+mugon-editor-import = { path = "crates/mugon-editor-import" }
+mugon-editor-server = { path = "crates/mugon-editor-server" }
+mugon-editor-scene = { path = "crates/mugon-editor-scene" }
+
+# Bevy is slow unoptimized; keep dependencies fast in dev builds.
+[profile.dev.package."*"]
+opt-level = 2
+
+[profile.dev]
+debug = 0
+
+[profile.release]
+debug = 0
+incremental = false
+strip = "symbols"   # smaller archives (the Bevy binaries are 150-200 MB with symbols)

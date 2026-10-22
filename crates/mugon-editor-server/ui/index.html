@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mugon Editor</title>
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.js", "three/addons/": "./vendor/addons/" } }
+</script>
+</head>
+<body>
+<header>
+  <h1>Mugon <span>Editor</span></h1>
+  <input id="search" type="search" placeholder="Search name, tag, category, pack…" autofocus>
+  <span id="count"></span>
+</header>
+<main>
+  <aside id="filters">
+    <section><h2>Type</h2>
+      <select id="kind"><option value="">All</option><option value="static">Static</option><option value="skinned">Skinned</option></select>
+    </section>
+    <section><h2>Packs</h2><ul id="packs" class="facet"></ul></section>
+    <section><h2>Categories</h2><ul id="categories" class="facet"></ul></section>
+    <section><h2>Tags</h2><div id="tags"></div></section>
+  </aside>
+  <div id="grid-wrap"><div id="grid"></div><div id="sentinel"></div></div>
+  <aside id="detail" hidden>
+    <button id="close" title="Close (Esc)">×</button>
+    <div id="viewer"></div>
+    <div id="viewer-tools">
+      <select id="variant" title="Texture variant"></select>
+      <select id="clip" title="Animation"></select>
+      <label><input type="checkbox" id="wire"> wireframe</label>
+      <label><input type="checkbox" id="boundsbox"> bounds</label>
+    </div>
+    <h2 id="d-name"></h2>
+    <dl id="d-meta"></dl>
+    <div id="d-tags"></div>
+    <div class="edit">
+      <input id="d-newtag" placeholder="add tag…">
+      <input id="d-category" placeholder="category…">
+      <button id="d-save">Save</button>
+    </div>
+    <div class="actions">
+      <button id="d-copy">Copy model path</button>
+      <button id="d-editor">Open in editor</button>
+    </div>
+  </aside>
+</main>
+<script type="module" src="app.js"></script>
+</body>
+</html>

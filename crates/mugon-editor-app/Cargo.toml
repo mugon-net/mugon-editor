@@ -1,0 +1,19 @@
+[package]
+name = "mugon-editor-app"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+mugon-editor-core.workspace = true
+mugon-editor-scene.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+serde_json.workspace = true
+bevy = { version = "0.19", default-features = false, features = ["3d"] }
+bevy_egui = "0.42"
+transform-gizmo-bevy = "0.11"
+rfd = "0.15"
+winit = { version = "0.30", default-features = false }
+
+[build-dependencies]
+winresource = "0.1"
