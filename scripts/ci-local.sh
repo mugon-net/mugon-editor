@@ -15,7 +15,7 @@ case "$job" in
     apt-get install -y -qq pkg-config libx11-dev libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev libxcursor-dev libxrandr-dev libxi-dev libgl1-mesa-dev libvulkan-dev
     cargo test --workspace --exclude mugon-editor-thumbs --locked --release
     cargo build --release --locked -p mugon-editor -p mugon-editor-thumbs -p mugon-editor-app
-    bash scripts/package.sh 0.0.0-local linux-x86_64' ;;
+    bash scripts/package.sh 0.0.0-local linux-amd64' ;;
   windows) inner='
     export PATH="$CARGO_HOME/bin:$PATH"
     apt-get update -qq
@@ -23,7 +23,7 @@ case "$job" in
     rustup target add x86_64-pc-windows-msvc
     command -v cargo-xwin >/dev/null || cargo install --locked cargo-xwin
     cargo xwin build --release --locked --target x86_64-pc-windows-msvc -p mugon-editor -p mugon-editor-thumbs -p mugon-editor-app
-    bash scripts/package.sh 0.0.0-local windows-x86_64' ;;
+    bash scripts/package.sh 0.0.0-local windows-amd64' ;;
   *) echo "unknown job: $job" >&2; exit 1 ;;
 esac
 

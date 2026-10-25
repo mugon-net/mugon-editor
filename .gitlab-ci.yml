@@ -1,125 +1,24 @@
-# Builds Mugon Editor for Linux and Windows and, for `v*` tags, publishes a GitLab release with
-# downloadable archives and install scripts. See docs/DEVELOPMENT.md ("Release / distribution").
-#
-# To release:  git tag v0.1.0 && git push origin v0.1.0
-#
-# Everything runs on Linux runners (docker executor). The Windows build is cross-compiled to x86_64-pc-windows-msvc
-# with cargo-xwin (downloads the Microsoft CRT/SDK headers+libs on first use; see https://github.com/rust-cross/cargo-xwin).
-
-stages: [test, build, release]
-
-variables:
-  CARGO_HOME: "$CI_PROJECT_DIR/.cargo"
-  XWIN_CACHE_DIR: "$CI_PROJECT_DIR/.xwin-cache"   # Windows SDK/CRT downloaded by cargo-xwin, cached below
-  CARGO_TERM_COLOR: always
-  # Low-RAM runners (2-4 GB): rustc needs ~1-2 GB per Bevy crate, so limit parallel compiler processes and LLVM threads.
-  # Raise on bigger runners for speed (CARGO_BUILD_JOBS=0 means "all cores"); use "1" for 2 GB runners.
-  CARGO_BUILD_JOBS: "2"
-  CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "4"
-  CARGO_INCREMENTAL: "0"                   # smaller target dir, faster cache upload; CI builds are clean anyway
-  # Faster zip/unzip of the (multi-GB) cache and artifacts.
-  FF_USE_FASTZIP: "true"
-  CACHE_COMPRESSION_LEVEL: fast
-  ARTIFACT_COMPRESSION_LEVEL: fast
-  # Bump to throw away all build caches (e.g. when they have grown too large or got corrupted).
-  CACHE_VERSION: "v1"
-  PACKAGE_REGISTRY_URL: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/mugon-editor"
-
-workflow:
+# The editor is built and released by the GitHub Actions workflow of its mirror (see docs/ADRs/0006-release-sdks-cli-and-editor.md).
+# Only what needs the rest of the monorepo runs here.
+.mugon-editor-bsn-check-changes:
   rules:
-    - if: $CI_COMMIT_TAG
-    - if: $CI_COMMIT_BRANCH
+    - changes:
+        - libraries/mugon-editor/crates/mugon-editor-bsn-check/**/*
+        - libraries/mugon-editor/crates/mugon-editor-scene/**/*
+        - libraries/mugon-sdk-bevy/**/*
 
-# Build cache design (the Bevy dependency tree takes ~20 minutes to compile from scratch):
-#  * One rolling cache key per platform (NOT keyed by Cargo.lock): a dependency bump then only recompiles what changed
-#    instead of everything. Bump CACHE_VERSION to reset it.
-#  * `test` and `build:linux` both use the release profile (`cargo test --release`), so the compiled dependencies are
-#    shared: the test job (earlier stage) warms the cache, the build job only compiles the final crates.
-#  * `when: always` saves the cache even if a job fails, so a failing test run does not throw the compile work away.
-#  * Caches are per runner unless the runner has a distributed cache (gitlab.com shared runners do; for self-hosted
-#    runners configure S3/GCS cache in the runner's config.toml, otherwise only jobs on the same runner share it).
-.linux-rust:
-  image: rust:1
-  cache:
-    key: "linux-release-${CACHE_VERSION}"
-    paths: [.cargo/registry, .cargo/git, target]
-    when: always
-  before_script:
-    - apt-get update -qq
-    - apt-get install -y -qq pkg-config libx11-dev libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev libxcursor-dev libxrandr-dev libxi-dev libgl1-mesa-dev libvulkan-dev
-
-test:
-  extends: .linux-rust
+mugon-editor:bsn-check:
   stage: test
-  script:
-    # mugon-editor-thumbs has no tests; excluding it avoids linking another ~150 MB Bevy test binary (RAM + time)
-    - cargo test --workspace --exclude mugon-editor-thumbs --locked --release
-
-build:linux:
-  extends: .linux-rust
-  stage: build
-  script:
-    - cargo build --release --locked -p mugon-editor -p mugon-editor-thumbs -p mugon-editor-app
-    - export VERSION="${CI_COMMIT_TAG:-0.0.0-${CI_COMMIT_SHORT_SHA}}"
-    - bash scripts/package.sh "$VERSION" linux-x86_64
-  artifacts:
-    name: mugon-editor-linux-x86_64
-    paths: [dist/*.tar.gz]
-    expire_in: 30 days
-
-# Windows build, cross-compiled on Linux (x86_64-pc-windows-msvc via cargo-xwin). No Windows runner needed.
-build:windows:
   image: rust:1
-  stage: build
+  needs: []
+  rules: !reference [.mugon-editor-bsn-check-changes, rules]
   cache:
-    key: "windows-xwin-${CACHE_VERSION}"
-    paths: [.cargo/registry, .cargo/git, .cargo/bin, .xwin-cache, target]
-    when: always
-  before_script:
-    - export PATH="$CARGO_HOME/bin:$PATH"
-    - apt-get update -qq
-    - apt-get install -y -qq clang lld llvm zip
-    - rustup target add x86_64-pc-windows-msvc
-    # cargo-xwin is cached in .cargo/bin; only compiled on a cold cache
-    - command -v cargo-xwin >/dev/null || cargo install --locked cargo-xwin
+    key: mugon-editor-bsn-check-cargo
+    paths:
+      - libraries/mugon-editor/crates/mugon-editor-bsn-check/target/
+      - .cargo-home/
+  variables:
+    CARGO_HOME: $CI_PROJECT_DIR/.cargo-home
   script:
-    - cargo xwin build --release --locked --target x86_64-pc-windows-msvc -p mugon-editor -p mugon-editor-thumbs -p mugon-editor-app
-    - export VERSION="${CI_COMMIT_TAG:-0.0.0-${CI_COMMIT_SHORT_SHA}}"
-    - bash scripts/package.sh "$VERSION" windows-x86_64
-  artifacts:
-    name: mugon-editor-windows-x86_64
-    paths: [dist/*.zip]
-    expire_in: 30 days
-
-release:
-  stage: release
-  image: registry.gitlab.com/gitlab-org/release-cli:latest
-  rules:
-    - if: $CI_COMMIT_TAG =~ /^v\d+/
-  needs: ["build:linux", "build:windows"]
-  script:
-    - apk add --no-cache curl >/dev/null 2>&1 || true
-    - export VERSION="${CI_COMMIT_TAG}"
-    - sed -e "s|@API_URL@|${CI_API_V4_URL}|g" -e "s|@PROJECT_ID@|${CI_PROJECT_ID}|g" scripts/install.ps1 > dist/install.ps1
-    - sed -e "s|@API_URL@|${CI_API_V4_URL}|g" -e "s|@PROJECT_ID@|${CI_PROJECT_ID}|g" scripts/install.sh > dist/install.sh
-    - |
-      for f in dist/*; do
-        curl --fail --header "JOB-TOKEN: ${CI_JOB_TOKEN}" --upload-file "$f" "${PACKAGE_REGISTRY_URL}/${VERSION}/$(basename "$f")"
-      done
-  release:
-    tag_name: $CI_COMMIT_TAG
-    description: "Mugon Editor $CI_COMMIT_TAG. Install: download the archive for your OS, or run the install script (see README)."
-    assets:
-      links:
-        - name: "mugon-editor-${CI_COMMIT_TAG}-windows-x86_64.zip"
-          url: "${PACKAGE_REGISTRY_URL}/${CI_COMMIT_TAG}/mugon-editor-${CI_COMMIT_TAG}-windows-x86_64.zip"
-          link_type: package
-        - name: "mugon-editor-${CI_COMMIT_TAG}-linux-x86_64.tar.gz"
-          url: "${PACKAGE_REGISTRY_URL}/${CI_COMMIT_TAG}/mugon-editor-${CI_COMMIT_TAG}-linux-x86_64.tar.gz"
-          link_type: package
-        - name: "install.ps1"
-          url: "${PACKAGE_REGISTRY_URL}/${CI_COMMIT_TAG}/install.ps1"
-          link_type: other
-        - name: "install.sh"
-          url: "${PACKAGE_REGISTRY_URL}/${CI_COMMIT_TAG}/install.sh"
-          link_type: other
+    - cd libraries/mugon-editor/crates/mugon-editor-bsn-check
+    - cargo test --locked

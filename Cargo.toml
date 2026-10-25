@@ -1,6 +1,8 @@
 [workspace]
 resolver = "2"
 members = ["crates/*"]
+# bsn-check depends on ../mugon-sdk-bevy by path, which a mirror of this folder does not contain: it is its own workspace.
+exclude = ["crates/mugon-editor-bsn-check"]
 
 [workspace.package]
 version = "0.1.0"

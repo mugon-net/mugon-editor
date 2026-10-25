@@ -36,8 +36,9 @@ are not composed (rare). Revisit if a pack needs it: a prefab walker would have 
 `overrides.json` so re-imports never lose user tags.
 
 ## D5: FBX2glTF stays an external binary
-No mature pure-Rust FBX→glTF path. The release binaries (v0.9.7) are downloaded by the package scripts and shipped in the
-release archives. Known weakness: skinned meshes/animations (accepted, see requirements).
+No mature pure-Rust FBX→glTF path. Since ADR 0006 (`docs/ADRs/0006-release-sdks-cli-and-editor.md` in the monorepo) the editor does not ship it:
+`mugon_editor_core::fbx2gltf` downloads the pinned upstream release (v0.9.7, SHA-256 checked) into `~/.mugon/tools/fbx2gltf/<version>/` on the first `import`,
+because the binary contains Autodesk's proprietary FBX SDK. Known weakness: skinned meshes/animations (accepted, see requirements).
 
 ## D6: BSN export = generated Rust `bsn_list!` source
 Bevy 0.19 has no `.bsn` asset loader (verified in `bevy_scene-0.19.1/src/lib.rs` docs). The scene description is
@@ -66,8 +67,8 @@ Category/tags edited in the browser are stored as overrides keyed by asset id, a
 With debuginfo the Bevy editor debug exe was >2 GB and Windows refused to run it ("Exec format error"). Dependencies
 are built with `opt-level = 2` in dev for usable speed.
 
-## D13: Distribution via GitLab CI
-Tag `v*` builds Windows + Linux archives (all executables + FBX2glTF + config example), uploads them to the generic
+## D13: Distribution via GitLab CI (superseded by ADR 0006: GitHub Actions in the mirror, assets on GitHub releases, index on tools.mugon.net)
+Tag `v*` builds Windows + Linux archives (all executables + config example; superseded by ADR 0006: GitHub release assets and tools.mugon.net), uploads them to the generic
 package registry and creates a release with install scripts (`scripts/install.ps1`, `scripts/install.sh`).
 Untested against a real GitLab instance when written; see `docs/DEVELOPMENT.md`.
 

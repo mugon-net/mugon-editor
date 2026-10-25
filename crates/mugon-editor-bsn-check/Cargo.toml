@@ -1,8 +1,11 @@
 [package]
 name = "mugon-editor-bsn-check"
-version.workspace = true
-edition.workspace = true
+version = "0.1.0"
+edition = "2021"
 publish = false
+
+# Its own workspace: the path dependency below only exists in the monorepo, not in a mirror of libraries/mugon-editor.
+[workspace]
 
 # Compile + spawn test for the BSN source that `mugon-editor-scene` generates.
 [dependencies]

@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
 pub mod config;
+pub mod fbx2gltf;
 pub mod index;
 
 pub const PACK_FILE: &str = "pack.json";

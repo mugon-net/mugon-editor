@@ -77,7 +77,7 @@ enum Command {
     /// Import one or more .unitypackage files (or folders containing them).
     Import {
         paths: Vec<PathBuf>,
-        /// Path to the FBX2glTF executable.
+        /// Path to the FBX2glTF executable (default: PATH, ~/.mugon/tools, or a checked download of the pinned release).
         #[arg(long, env = "MUGON_EDITOR_FBX2GLTF")]
         fbx2gltf: Option<PathBuf>,
         /// Scratch directory for extraction.
@@ -147,31 +147,6 @@ fn run_sibling(name: &str, lib: &Library, args: &[String]) -> Result<()> {
     Ok(())
 }
 
-/// FBX2glTF: explicit path, next to the executable (installed layout), or in `third_party/` (repo layout).
-fn find_fbx2gltf(explicit: Option<PathBuf>) -> Result<PathBuf> {
-    if let Some(p) = explicit {
-        return Ok(p);
-    }
-    let name = if cfg!(windows) { "FBX2glTF.exe" } else { "FBX2glTF" };
-    let mut dirs = Vec::new();
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(dir) = exe.parent() {
-            dirs.push(dir.to_path_buf());
-            dirs.push(dir.join("third_party").join("FBX2glTF"));
-            // cargo layout: <repo>/target/{debug,release}/mugon-editor
-            dirs.push(dir.join("..").join("..").join("third_party").join("FBX2glTF"));
-        }
-    }
-    dirs.push(PathBuf::from("third_party").join("FBX2glTF"));
-    for d in &dirs {
-        let candidate = d.join(name);
-        if candidate.is_file() {
-            return Ok(candidate);
-        }
-    }
-    bail!("FBX2glTF not found; pass --fbx2gltf or set MUGON_EDITOR_FBX2GLTF")
-}
-
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -186,7 +161,7 @@ async fn main() -> Result<()> {
         Command::Import { paths, fbx2gltf, temp, keep_temp, force } => {
             let lib = library(&cli)?;
             let opts = ImportOptions {
-                fbx2gltf: find_fbx2gltf(fbx2gltf.clone())?,
+                fbx2gltf: mugon_editor_core::fbx2gltf::resolve(fbx2gltf.clone())?,
                 temp_dir: temp.clone().unwrap_or_else(|| lib.root.join(".tmp")),
                 keep_temp: *keep_temp,
             };

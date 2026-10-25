@@ -4,9 +4,14 @@
 
 ```
 cargo build --release                 # all executables: mugon-editor, mugon-editor-thumbs, mugon-editor-app
-cargo test --workspace                # unit + golden tests (builds Bevy once for mugon-editor-app / mugon-editor-bsn-check)
+cargo test --workspace                # unit + golden tests (builds Bevy once for mugon-editor-app)
 UPDATE_GOLDEN=1 cargo test -p mugon-editor-scene   # regenerate crates/mugon-editor-bsn-check/src/level.rs after changing the exporter
+cargo test --manifest-path crates/mugon-editor-bsn-check/Cargo.toml   # compile + spawn the golden BSN (monorepo only)
 ```
+
+`mugon-editor-bsn-check` is excluded from the workspace and has its own `Cargo.lock`: it depends on `../../../mugon-sdk-bevy` by path
+(exported scenes import `mugon_sdk_bevy::scene::{Marker, MarkerShape}`), which does not exist in the GitHub mirror of this folder.
+The monorepo CI job `mugon-editor:bsn-check` runs it.
 
 Toolchain: current stable Rust (developed with 1.98). Bevy 0.19.x, `bevy_egui 0.42`, `transform-gizmo-bevy 0.11`.
 The dev profile has `debug = 0` (see D12 in `DECISIONS.md`); first Bevy builds take 5-10 minutes.
@@ -52,30 +57,18 @@ over these first. The CI pipeline has not been run on a real GitLab instance eit
 
 ## Release / distribution
 
-`.gitlab-ci.yml` stages: `test` -> `build` (Linux x86_64 + Windows x86_64) -> `release` (only on tags `v*`).
-Both build jobs run on **Linux** (docker) runners; the Windows build is cross-compiled to `x86_64-pc-windows-msvc` with
-`cargo-xwin` (needs `clang lld llvm zip`; downloads the Microsoft CRT/SDK into `XWIN_CACHE_DIR` on first use). Each job runs
-`scripts/package.sh <version> <platform>` (`scripts/package.ps1` is only for packaging a local Windows build), producing `dist/mugon-editor-<version>-<platform>.{tar.gz,zip}`
-containing the three executables, `FBX2glTF`, `README.md` and `config/mugon.example.toml`.
-The release job uploads the archives to the project's generic package registry
-(`.../packages/generic/mugon-editor/<version>/`), creates a GitLab release with links to them, and publishes
-`install.ps1` / `install.sh` (with the project API URL/ID substituted) as release links.
-CI build cache (the Bevy dependency tree is ~20 min cold): one rolling cache key per platform
-(`linux-release-$CACHE_VERSION`, `windows-xwin-$CACHE_VERSION`), saved even when a job fails, with the `test` job running
-`cargo test --release` so test and build jobs share compiled dependencies; the Windows job also caches `cargo-xwin` (`.cargo/bin`) and the downloaded SDK (`.xwin-cache`).
-Caches are per runner unless a distributed cache is configured (gitlab.com shared runners have one; self-hosted runners
-need S3/GCS cache config). Bump `CACHE_VERSION` in `.gitlab-ci.yml` to reset caches if they grow too large (cargo never prunes
-old artifacts from `target`). 
-**Low-RAM runners (2-4 GB).** Verified locally with `docker run --memory=4g --memory-swap=4g --cpus=2 rust:1` and a cold cache:
-the Linux test + build jobs (~14.7 min total) and the cross-compiled Windows build (~17 min incl. installing cargo-xwin) both
-succeeded without OOM kills. What makes that work: `CARGO_BUILD_JOBS=2` (limits parallel rustc processes; use 1 for 2 GB
-runners, 0 = all cores on big runners), `CARGO_PROFILE_RELEASE_CODEGEN_UNITS=4`, Bevy built with only the `3d` feature set for
-`mugon-editor-app` / `mugon-editor-thumbs` (no 2d/ui/audio crates), the test job excluding `mugon-editor-thumbs` (one fewer 150 MB Bevy
-link), and `[profile.release] strip = "symbols"` (archives ~55-60 MB instead of ~110 MB). Note that on small runners
-the time is mostly CPU-bound (2 cores), not RAM-bound: RAM only decides between "builds" and "OOM-killed/swapping".
-Cold builds are slow by nature (~15 min on 2 cores); the rolling caches are what make later pipelines fast.
+Releases are built by the GitHub Actions workflow `.github/workflows/main.yaml` of the `mugon-net/mugon-editor` mirror (see
+`docs/ADRs/0006-release-sdks-cli-and-editor.md` in the monorepo): `test` on every push/PR; a manual `workflow_dispatch` run with
+`version` (checked against the workspace version), `requires-cli` and `dry-run` builds Linux amd64 and the cross-compiled Windows amd64
+archives (`scripts/package.sh <version> <platform>` -> `dist/mugon-editor-<version>-<platform>.{tar.gz,zip}` with the three executables,
+`README.md` and `config/mugon.example.toml`), creates the GitHub release and `scripts/publish-tools.sh` adds the version to
+`https://tools.mugon.net/editor/index.json` (stable versions only) next to the install scripts. The Windows build is cross-compiled to
+`x86_64-pc-windows-msvc` with `cargo-xwin` (needs `clang lld llvm zip`; downloads the Microsoft CRT/SDK on first use).
+Bump the version with `node libraries/scripts/bump-version.mjs editor <x.y.z>` in the monorepo.
+Low-RAM runners (2-4 GB): the build is CPU-bound (~15 min cold on 2 cores); `CARGO_BUILD_JOBS=2`, `CARGO_PROFILE_RELEASE_CODEGEN_UNITS=4`,
+Bevy with only the `3d` feature set and `strip = "symbols"` keep it within 4 GB.
 Reproduce locally with `scripts/ci-local.sh linux|windows [memory] [cpus]` (docker; mirrors the CI jobs, defaults to 4g / 2 CPUs).
-To cut a release: `git tag v0.1.0 && git push origin v0.1.0`.
+To cut a release: bump the version in the monorepo, wait for the mirror sync, then run the workflow (dry run first).
 
 ## Ideas not done yet
 

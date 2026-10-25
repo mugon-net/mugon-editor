@@ -11,21 +11,28 @@ glTF library, tells AI agents what is in it, and lets you build Bevy scenes from
 
 ## Install
 
-Download the latest archive from the project's **Releases** page (Windows `.zip` or Linux `.tar.gz`), or use the installer:
+Through the Mugon CLI (recommended):
+
+```bash
+mugon editor install      # then: mugon editor
+```
+
+or with the install script, which installs the CLI first if needed:
 
 ```powershell
 # Windows (PowerShell)
-irm <release-link-to-install.ps1> | iex
+irm https://tools.mugon.net/editor/install.ps1 | iex
 ```
 ```bash
 # Linux
-curl -fsSL <release-link-to-install.sh> | bash
+curl -fsSL https://tools.mugon.net/editor/install.sh | sh
 ```
 
-Private project? Set `GITLAB_TOKEN` (a token with `read_api`) first. The archive contains `mugon-editor`, `mugon-editor-thumbs`,
-`mugon-editor-app`, `FBX2glTF` and `config/mugon.example.toml`; keep them in one folder. The install scripts put them in `~/.mugon/editor`
-(`%USERPROFILE%\.mugon\editor` on Windows); `mugon editor` from the Mugon CLI runs this `mugon-editor`. The editor and thumbnail
-renderer need a GPU with Vulkan/DX12 drivers.
+The archives (Windows `.zip` amd64, Linux `.tar.gz` amd64) are also attached to the GitHub releases. They contain `mugon-editor`,
+`mugon-editor-thumbs`, `mugon-editor-app` and `config/mugon.example.toml`; keep them in one folder. `mugon editor install` unpacks them to
+`~/.mugon/editor/<version>/` (`%USERPROFILE%\.mugon\editor\<version>\` on Windows) and `mugon editor` runs the active version.
+FBX2glTF is not part of the archive; `mugon-editor import` downloads it on first use. The editor and thumbnail renderer need a GPU with
+Vulkan/DX12 drivers.
 
 Build from source instead: `cargo build --release` (Rust stable; Linux needs the packages listed in `docs/DEVELOPMENT.md`).
 
@@ -145,7 +152,7 @@ All tools (`mugon-editor`, `mugon-editor-app`, `mugon-editor-thumbs`) read it fr
 
 | Command | Purpose |
 |---|---|
-| `mugon-editor import <pkg\|dir>... [--force]` | import `.unitypackage` files, skipping packs already imported (needs FBX2glTF; found next to the executable, or `--fbx2gltf` / `MUGON_EDITOR_FBX2GLTF`) |
+| `mugon-editor import <pkg\|dir>... [--force]` | import `.unitypackage` files, skipping packs already imported (needs FBX2glTF: `--fbx2gltf` / `MUGON_EDITOR_FBX2GLTF`, then `PATH`, then `~/.mugon/tools/fbx2gltf/<version>/`; if it is in none of them the pinned upstream release is downloaded there on first import) |
 | `mugon-editor config [--set-library <dir>]` | show / change the saved library folder |
 | `mugon-editor [--scene file] [--asset id] [--game-dir dir]` | no subcommand: print help and start the editor with the configured library |
 | `mugon-editor list` | packs and asset counts |
@@ -163,7 +170,7 @@ crates/            Rust workspace (core, import, server (+ ui/), mcp, scene, thu
 config/            example mugon.toml [editor] table
 docs/              ARCHITECTURE.md, DECISIONS.md, DEVELOPMENT.md
 scripts/           packaging and install scripts used by CI
-.gitlab-ci.yml     test + build + release pipeline
+.github/workflows test + build + release workflow (GitHub mirror)
 PLAN.md            requirements, roadmap and current status
 AGENTS.md          orientation for AI coding sessions
 ```

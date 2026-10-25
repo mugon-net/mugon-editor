@@ -38,7 +38,7 @@ separate glTF files (ADR D6).
 Verification (highest value next):
 - [ ] Drive the editor interactively: picking, placing, gizmo drags, neighbour snapping, camera, dialogs, export dialog,
       "Open in editor" from the browser. Expect tuning (snap threshold, camera speeds, hotkeys).
-- [ ] Run the GitLab pipeline once (tag `v0.1.0`) and fix runner/package issues; verify `install.ps1` / `install.sh`.
+- [ ] Run the GitHub release workflow once (dry run, then a real `v0.1.0`) and fix runner/package issues; verify `mugon editor install` and the install scripts (ADR 0006).
 - [ ] Load an exported scene in a real Bevy 0.19 game with the bundled assets, in a wasm build.
 
 Features:

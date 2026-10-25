@@ -1,0 +1,133 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  # Releasing is manual and a dry run unless explicitly switched off. The typed version is checked against the
+  # workspace version in Cargo.toml (bumped in the monorepo, which this repository mirrors) -- this workflow never
+  # commits, so it can't diverge from the mirror.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (x.y.z); must equal the workspace version in Cargo.toml"
+        required: true
+        type: string
+      requires-cli:
+        description: 'CLI versions this editor works with, e.g. ">=0.5.0 <1.0.0" (empty = any)'
+        required: false
+        type: string
+        default: ""
+      dry-run:
+        description: "Build and package only (untick to create the GitHub release and publish to tools.mugon.net)"
+        required: true
+        type: boolean
+        default: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: System libraries
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq pkg-config libx11-dev libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev libxcursor-dev libxrandr-dev libxi-dev libgl1-mesa-dev libvulkan-dev
+      # mugon-editor-thumbs has no tests; excluding it avoids linking another ~150 MB Bevy test binary
+      - run: cargo test --workspace --exclude mugon-editor-thumbs --locked --release
+
+  build-linux:
+    if: github.event_name == 'workflow_dispatch'
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check the requested version against Cargo.toml
+        run: |
+          VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "mugon-editor") | .version')
+          if [ "$VERSION" != "${{ inputs.version }}" ]; then
+            echo "Cargo.toml is at $VERSION, not ${{ inputs.version }}; bump it in the monorepo first" >&2
+            exit 1
+          fi
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: System libraries
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq pkg-config libx11-dev libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev libxcursor-dev libxrandr-dev libxi-dev libgl1-mesa-dev libvulkan-dev
+      - run: cargo build --release --locked -p mugon-editor -p mugon-editor-thumbs -p mugon-editor-app
+      - run: bash scripts/package.sh "${{ inputs.version }}" linux-amd64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mugon-editor-linux-amd64
+          path: dist/*.tar.gz
+
+  # Cross-compiled on Linux (x86_64-pc-windows-msvc via cargo-xwin, which downloads the Microsoft CRT/SDK on first use).
+  build-windows:
+    if: github.event_name == 'workflow_dispatch'
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      - uses: Swatinem/rust-cache@v2
+      - name: Windows cross-compilation tools
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq clang lld llvm zip
+          cargo install --locked cargo-xwin
+      - run: cargo xwin build --release --locked --target x86_64-pc-windows-msvc -p mugon-editor -p mugon-editor-thumbs -p mugon-editor-app
+        env:
+          XWIN_CACHE_DIR: ${{ github.workspace }}/.xwin-cache
+      - run: bash scripts/package.sh "${{ inputs.version }}" windows-amd64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mugon-editor-windows-amd64
+          path: dist/*.zip
+
+  release:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: [build-linux, build-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Checksums
+        run: cd dist && sha256sum *.tar.gz *.zip | tee checksums.txt
+      - name: Refuse to republish an existing version
+        run: |
+          if gh release view "v${{ inputs.version }}" > /dev/null 2>&1; then
+            echo "release v${{ inputs.version }} already exists; bump the version in the monorepo first" >&2
+            exit 1
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Create the GitHub release
+        if: ${{ !inputs.dry-run }}
+        run: |
+          prerelease=""
+          case "${{ inputs.version }}" in *-*) prerelease="--prerelease" ;; esac
+          gh release create "v${{ inputs.version }}" dist/*.tar.gz dist/*.zip dist/checksums.txt \
+            --target "$GITHUB_SHA" --title "Mugon Editor v${{ inputs.version }}" \
+            --notes "Install with \`mugon editor install\` (see https://docs.mugon.net)." $prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+      # Stable versions only: pre-releases never reach tools.mugon.net.
+      - name: Publish the index and install scripts to tools.mugon.net
+        if: ${{ !inputs.dry-run && !contains(inputs.version, '-') }}
+        run: bash scripts/publish-tools.sh "${{ inputs.version }}" "${{ inputs.requires-cli }}"
+        env:
+          TOOLS_STORAGE_ZONE: ${{ vars.TOOLS_STORAGE_ZONE }}
+          TOOLS_STORAGE_KEY: ${{ secrets.TOOLS_STORAGE_KEY }}
+      - name: Dry run of the index
+        if: ${{ inputs.dry-run }}
+        run: DRY_RUN=1 bash scripts/publish-tools.sh "${{ inputs.version }}" "${{ inputs.requires-cli }}"
