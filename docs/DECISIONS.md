@@ -67,10 +67,9 @@ Category/tags edited in the browser are stored as overrides keyed by asset id, a
 With debuginfo the Bevy editor debug exe was >2 GB and Windows refused to run it ("Exec format error"). Dependencies
 are built with `opt-level = 2` in dev for usable speed.
 
-## D13: Distribution via GitLab CI (superseded by ADR 0006: GitHub Actions in the mirror, assets on GitHub releases, index on tools.mugon.net)
+## D13: Distribution via CI (superseded by ADR 0006: GitHub Actions in the mirror, assets on GitHub releases, index on tools.mugon.net)
 Tag `v*` builds Windows + Linux archives (all executables + config example; superseded by ADR 0006: GitHub release assets and tools.mugon.net), uploads them to the generic
 package registry and creates a release with install scripts (`scripts/install.ps1`, `scripts/install.sh`).
-Untested against a real GitLab instance when written; see `docs/DEVELOPMENT.md`.
 
 ## D14: Library location in `~/.mugon/config.toml` (`[editor]` table)
 Resolution order: `--library` / `MUGON_EDITOR_LIBRARY`, then the config file, then (CLI only, interactive terminal) a prompt on

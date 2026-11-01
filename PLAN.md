@@ -14,7 +14,7 @@ Companion documents: `README.md` (usage), `docs/ARCHITECTURE.md`, `docs/DECISION
 4. Editor (second step): camera navigation, place models, move/rotate/scale, snap models next to each other, add
    components to entities, export everything as BSN. Scene description and models are separate files (web target).
 5. Rust, library outside the repo, Bevy 0.19+, web game target. Skinned/animated assets are secondary; no automatic Blender fallback.
-6. Distribution: GitLab pipeline builds executables, users can download/install easily.
+6. Distribution: GitHub Actions builds executables, users can download/install easily.
 
 ## Status
 
@@ -28,7 +28,7 @@ Companion documents: `README.md` (usage), `docs/ARCHITECTURE.md`, `docs/DECISION
 | Editor | implemented; only verified by screenshot (`--demo --screenshot`) and unit tests, **interactive behaviour untested** |
 | Markers | done: box/sphere/cylinder volume placeholders (translucent in editor, size = scale), exported as `Transform` + `Marker { shape }` + user components |
 | CLI usability | done: saved library config (`[editor]` in `~/.mugon/config.toml`, first-run prompt), incremental folder import, bare `mugon-editor` opens the editor, `mugon-editor config`, in-editor shortcut hint (F1), thumbnails `.gitignore` |
-| CI / install scripts | written; packaging script and installed-layout verified locally, **pipeline never run on a real GitLab instance** |
+| CI / install scripts | written; packaging script and installed-layout verified locally, **pipeline never run** |
 
 Key finding: **Bevy 0.19 has no `.bsn` loader**, so BSN export = generated Rust `bsn_list!` source with models as
 separate glTF files (ADR D6).

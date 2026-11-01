@@ -46,7 +46,7 @@ Manually verified during development: import of 9 packs, REST API, browser UI + 
 
 **Never verified by driving the window**: mouse picking, gizmo dragging, neighbour snapping feel, camera controls, file
 dialogs, export dialog, the browser's "Open in editor" button. A session that can drive a desktop app should do a pass
-over these first. The CI pipeline has not been run on a real GitLab instance either.
+over these first. The CI pipeline has not been run either.
 
 ## Conventions
 
